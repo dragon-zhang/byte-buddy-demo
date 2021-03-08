@@ -6,6 +6,7 @@ import net.bytebuddy.asm.MemberAttributeExtension;
 import net.bytebuddy.description.annotation.AnnotationDescription;
 import net.bytebuddy.dynamic.DynamicType;
 import net.bytebuddy.dynamic.loading.ClassReloadingStrategy;
+import net.bytebuddy.implementation.FixedValue;
 import net.bytebuddy.matcher.ElementMatchers;
 import org.springframework.beans.factory.BeanNameAware;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -87,13 +88,34 @@ public class TestController implements BeanNameAware {
         System.out.println("saveIn->" + path);
         DynamicType.Unloaded<?> unloaded = builder.make();
         unloaded.saveIn(new File(path));
-        unloaded.load(classLoader,
-                ClassReloadingStrategy.fromInstalledAgent());
+        unloaded.load(classLoader, ClassReloadingStrategy.fromInstalledAgent());
         try {
             return "redefined";
         } finally {
             System.out.println("after " + klass.isAnnotationPresent(Deprecated.class));
         }
+    }
+
+    @GetMapping("/changeMethod")
+    public String changeMethod() throws Exception {
+        ByteBuddyAgent.install();
+        Class<ChangeClassDefine> klass = ChangeClassDefine.class;
+        ByteBuddy byteBuddy = new ByteBuddy();
+        DynamicType.Unloaded<?> unloaded = byteBuddy.redefine(klass)
+                .method(ElementMatchers.named("test"))
+                .intercept(FixedValue.value("changed"))
+                .make();
+        ClassLoader classLoader = Thread.currentThread().getContextClassLoader();
+        String path = classLoader.getResource("/").getPath();
+        System.out.println("saveIn->" + path);
+        unloaded.saveIn(new File(path));
+        unloaded.load(classLoader, ClassReloadingStrategy.fromInstalledAgent());
+        return "changed";
+    }
+
+    @GetMapping("/check")
+    public String check() throws Exception {
+        return changeClassDefine.test("haha");
     }
 
     @Override
