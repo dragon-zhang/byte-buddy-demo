@@ -115,6 +115,7 @@ public class TestController implements BeanNameAware {
 
     @GetMapping("/check")
     public String check() throws Exception {
+        System.out.println(changeClassDefine + " " + changeClassDefine.hashCode());
         return changeClassDefine.test("haha");
     }
 
