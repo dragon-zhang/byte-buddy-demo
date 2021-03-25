@@ -17,6 +17,9 @@ import java.util.Collections;
  */
 public class ClassFileManager extends ForwardingJavaFileManager<StandardJavaFileManager> {
 
+    /**
+     * fixme 直接用java原生的编译器会报错，需要用maven的编译器
+     */
     private static final JavaCompiler COMPILER = ToolProvider.getSystemJavaCompiler();
 
     @Getter
