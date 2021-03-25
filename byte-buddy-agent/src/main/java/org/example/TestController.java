@@ -4,10 +4,13 @@ import net.bytebuddy.ByteBuddy;
 import net.bytebuddy.agent.ByteBuddyAgent;
 import net.bytebuddy.asm.MemberAttributeExtension;
 import net.bytebuddy.description.annotation.AnnotationDescription;
+import net.bytebuddy.description.type.TypeDescription;
 import net.bytebuddy.dynamic.DynamicType;
 import net.bytebuddy.dynamic.loading.ClassReloadingStrategy;
 import net.bytebuddy.implementation.FixedValue;
 import net.bytebuddy.matcher.ElementMatchers;
+import org.example.compile.ClassFileManager;
+import org.example.compile.JavaFile;
 import org.springframework.beans.factory.BeanNameAware;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -94,6 +97,66 @@ public class TestController implements BeanNameAware {
         } finally {
             System.out.println("after " + klass.isAnnotationPresent(Deprecated.class));
         }
+    }
+
+    @GetMapping("/replace")
+    public String replace() throws Exception {
+        ByteBuddyAgent.install();
+        ClassLoader classLoader = Thread.currentThread().getContextClassLoader();
+        String path = classLoader.getResource("/").getPath();
+
+        String source = "package org.example;\n" +
+                "\n" +
+                "import org.springframework.beans.factory.BeanNameAware;\n" +
+                "import org.springframework.web.bind.annotation.GetMapping;\n" +
+                "import org.springframework.web.bind.annotation.RequestParam;\n" +
+                "import org.springframework.web.bind.annotation.RestController;\n" +
+                "\n" +
+                "/**\n" +
+                " * @author zhangzicheng\n" +
+                " * @date 2021/03/06\n" +
+                " */\n" +
+                "@RestController\n" +
+                "public class ChangeClassDefine implements BeanNameAware {\n" +
+                "\n" +
+                "    /**\n" +
+                "     * beanName\n" +
+                "     */\n" +
+                "    private String name;\n" +
+                "\n" +
+                "    /**\n" +
+                "     * 方法上的描述\n" +
+                "     *\n" +
+                "     * @param name 参数\n" +
+                "     * @return 返回值\n" +
+                "     * @throws java.lang.Exception\n" +
+                "     * @author zhangzicheng\n" +
+                "     * @version 1.0.0\n" +
+                "     */\n" +
+                "    @GetMapping(\"/change/test\")\n" +
+                "    public String test(@RequestParam String name) throws Exception {\n" +
+                "        return \"replaced\";\n" +
+                "    }\n" +
+                "\n" +
+                "    @Override\n" +
+                "    public void setBeanName(String name) {\n" +
+                "        this.name = name;\n" +
+                "    }\n" +
+                "}\n";
+        ClassFileManager manager = new ClassFileManager();
+        JavaFile javaFile = new JavaFile("ChangeClassDefine", source);
+        if (!manager.compile(javaFile)) {
+            System.out.println("编译失败");
+            return "failed";
+        }
+        DynamicType.Unloaded<?> unloaded = new ByteBuddy()
+                .redefine(ChangeClassDefine.class)
+                .require(TypeDescription.CLASS, manager.getClassFile().getBytes())
+                .make();
+        System.out.println("saveIn->" + path);
+        unloaded.saveIn(new File(path));
+        unloaded.load(classLoader, ClassReloadingStrategy.fromInstalledAgent());
+        return "replaced";
     }
 
     @GetMapping("/changeMethod")
