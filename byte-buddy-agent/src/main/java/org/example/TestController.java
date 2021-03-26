@@ -4,7 +4,6 @@ import net.bytebuddy.ByteBuddy;
 import net.bytebuddy.agent.ByteBuddyAgent;
 import net.bytebuddy.asm.MemberAttributeExtension;
 import net.bytebuddy.description.annotation.AnnotationDescription;
-import net.bytebuddy.description.type.TypeDescription;
 import net.bytebuddy.dynamic.DynamicType;
 import net.bytebuddy.dynamic.loading.ClassReloadingStrategy;
 import net.bytebuddy.implementation.FixedValue;
@@ -18,6 +17,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import javax.annotation.Resource;
 import java.io.File;
+import java.lang.instrument.Instrumentation;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 
@@ -40,6 +40,9 @@ public class TestController implements BeanNameAware {
      * beanName
      */
     private String name;
+
+    @Resource
+    private ClassFileManager classFileManager;
 
     @Resource
     private ChangeClassDefine changeClassDefine;
@@ -101,7 +104,7 @@ public class TestController implements BeanNameAware {
 
     @GetMapping("/replace")
     public String replace() throws Exception {
-        ByteBuddyAgent.install();
+        Instrumentation instrumentation = ByteBuddyAgent.install();
         ClassLoader classLoader = Thread.currentThread().getContextClassLoader();
         String path = classLoader.getResource("/").getPath();
 
@@ -143,19 +146,14 @@ public class TestController implements BeanNameAware {
                 "        this.name = name;\n" +
                 "    }\n" +
                 "}\n";
-        ClassFileManager manager = new ClassFileManager();
-        JavaFile javaFile = new JavaFile("ChangeClassDefine", source);
-        if (!manager.compile(javaFile)) {
+        JavaFile javaFile = new JavaFile(ChangeClassDefine.class.getSimpleName(), source);
+        if (!classFileManager.compile(javaFile)) {
             System.out.println("编译失败");
             return "failed";
         }
-        DynamicType.Unloaded<?> unloaded = new ByteBuddy()
-                .redefine(ChangeClassDefine.class)
-                .require(TypeDescription.CLASS, manager.getClassFile().getBytes())
-                .make();
-        System.out.println("saveIn->" + path);
-        unloaded.saveIn(new File(path));
-        unloaded.load(classLoader, ClassReloadingStrategy.fromInstalledAgent());
+        instrumentation.addTransformer((loader, className, classBeingRedefined, protectionDomain, classfileBuffer) ->
+                classFileManager.getClassFile(ChangeClassDefine.class.getName()).getBytes(), true);
+        instrumentation.retransformClasses(ChangeClassDefine.class);
         return "replaced";
     }
 

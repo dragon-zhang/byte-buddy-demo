@@ -1,38 +1,61 @@
 package org.example.compile;
 
 import lombok.Getter;
+import org.springframework.stereotype.Component;
+import org.springframework.web.context.ServletContextAware;
 
+import javax.servlet.ServletContext;
 import javax.tools.FileObject;
 import javax.tools.ForwardingJavaFileManager;
 import javax.tools.JavaCompiler;
 import javax.tools.JavaFileObject;
 import javax.tools.StandardJavaFileManager;
 import javax.tools.ToolProvider;
+import java.io.File;
+import java.net.MalformedURLException;
+import java.net.URL;
+import java.net.URLClassLoader;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.List;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 
 /**
  * @author SuccessZhang
  * @date 2020/7/17
  */
-public class ClassFileManager extends ForwardingJavaFileManager<StandardJavaFileManager> {
+@Component
+public class ClassFileManager extends ForwardingJavaFileManager<StandardJavaFileManager> implements ServletContextAware {
 
-    /**
-     * fixme 直接用java原生的编译器会报错，需要用maven的编译器
-     */
     private static final JavaCompiler COMPILER = ToolProvider.getSystemJavaCompiler();
 
     @Getter
-    private ClassFile classFile;
+    private final ConcurrentMap<String, ClassFile> classFiles = new ConcurrentHashMap<>();
+
+    private ServletContext servletContext;
 
     public ClassFileManager() {
         super(COMPILER.getStandardFileManager(null, null, StandardCharsets.UTF_8));
     }
 
-    public boolean compile(JavaFile javaFile) {
-        JavaCompiler.CompilationTask task = COMPILER.getTask(null, this, null, null, null,
-                Collections.singletonList(javaFile));
+    public boolean compile(JavaFile javaFile) throws MalformedURLException {
+        JavaCompiler.CompilationTask task = COMPILER.getTask(null, this, null,
+                buildClassPathOption(), null, Collections.singletonList(javaFile));
         return task.call();
+    }
+
+    private Iterable<String> buildClassPathOption() {
+        List<String> options = new ArrayList<>();
+        options.add("-classpath");
+        StringBuilder sb = new StringBuilder();
+        URLClassLoader urlClassLoader = (URLClassLoader) Thread.currentThread().getContextClassLoader();
+        for (URL url : urlClassLoader.getURLs()) {
+            sb.append(url.getFile()).append(File.pathSeparator);
+        }
+        options.add(sb.toString());
+        return options;
     }
 
     /**
@@ -52,8 +75,16 @@ public class ClassFileManager extends ForwardingJavaFileManager<StandardJavaFile
      */
     @Override
     public JavaFileObject getJavaFileForOutput(Location location, String className, JavaFileObject.Kind kind, FileObject sibling) {
-        this.classFile = new ClassFile(className);
-        return this.classFile;
+        classFiles.putIfAbsent(className, new ClassFile(className));
+        return classFiles.get(className);
     }
 
+    public ClassFile getClassFile(String className) {
+        return classFiles.get(className);
+    }
+
+    @Override
+    public void setServletContext(ServletContext servletContext) {
+        this.servletContext = servletContext;
+    }
 }
