@@ -105,9 +105,6 @@ public class TestController implements BeanNameAware {
     @GetMapping("/replace")
     public String replace() throws Exception {
         Instrumentation instrumentation = ByteBuddyAgent.install();
-        ClassLoader classLoader = Thread.currentThread().getContextClassLoader();
-        String path = classLoader.getResource("/").getPath();
-
         String source = "package org.example;\n" +
                 "\n" +
                 "import org.springframework.beans.factory.BeanNameAware;\n" +
