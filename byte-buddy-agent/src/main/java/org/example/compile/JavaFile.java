@@ -12,7 +12,7 @@ public class JavaFile extends SimpleJavaFileObject {
     /**
      * 用于保存源代码
      */
-    private String content;
+    private final String content;
 
     public JavaFile(String name, String content) {
         super(URI.create(name + Kind.SOURCE.extension), Kind.SOURCE);

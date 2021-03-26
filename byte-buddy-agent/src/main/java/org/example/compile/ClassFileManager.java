@@ -2,9 +2,7 @@ package org.example.compile;
 
 import lombok.Getter;
 import org.springframework.stereotype.Component;
-import org.springframework.web.context.ServletContextAware;
 
-import javax.servlet.ServletContext;
 import javax.tools.FileObject;
 import javax.tools.ForwardingJavaFileManager;
 import javax.tools.JavaCompiler;
@@ -12,7 +10,6 @@ import javax.tools.JavaFileObject;
 import javax.tools.StandardJavaFileManager;
 import javax.tools.ToolProvider;
 import java.io.File;
-import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.URLClassLoader;
 import java.nio.charset.StandardCharsets;
@@ -27,20 +24,18 @@ import java.util.concurrent.ConcurrentMap;
  * @date 2020/7/17
  */
 @Component
-public class ClassFileManager extends ForwardingJavaFileManager<StandardJavaFileManager> implements ServletContextAware {
+public class ClassFileManager extends ForwardingJavaFileManager<StandardJavaFileManager> {
 
     private static final JavaCompiler COMPILER = ToolProvider.getSystemJavaCompiler();
 
     @Getter
     private final ConcurrentMap<String, ClassFile> classFiles = new ConcurrentHashMap<>();
 
-    private ServletContext servletContext;
-
     public ClassFileManager() {
         super(COMPILER.getStandardFileManager(null, null, StandardCharsets.UTF_8));
     }
 
-    public boolean compile(JavaFile javaFile) throws MalformedURLException {
+    public boolean compile(JavaFile javaFile) {
         JavaCompiler.CompilationTask task = COMPILER.getTask(null, this, null,
                 buildClassPathOption(), null, Collections.singletonList(javaFile));
         return task.call();
@@ -70,21 +65,16 @@ public class ClassFileManager extends ForwardingJavaFileManager<StandardJavaFile
      * @see com.sun.tools.javac.main.JavaCompiler#generate(Queue, Queue)
      * @see com.sun.tools.javac.main.JavaCompiler#genCode(com.sun.tools.javac.comp.Env, com.sun.tools.javac.tree.JCTree.JCClassDecl)
      * @see com.sun.tools.javac.jvm.ClassWriter#writeClass(com.sun.tools.javac.code.Symbol.ClassSymbol)
-     * @see JavaFileManager#getJavaFileForOutput(Location, String, JavaFileObject.Kind, FileObject)
+     * @see javax.tools.JavaFileManager#getJavaFileForOutput(Location, String, JavaFileObject.Kind, FileObject)
      * @see ClassFileManager#getJavaFileForOutput(Location, String, JavaFileObject.Kind, FileObject)
      */
     @Override
     public JavaFileObject getJavaFileForOutput(Location location, String className, JavaFileObject.Kind kind, FileObject sibling) {
-        classFiles.putIfAbsent(className, new ClassFile(className));
+        classFiles.put(className, new ClassFile(className));
         return classFiles.get(className);
     }
 
     public ClassFile getClassFile(String className) {
         return classFiles.get(className);
-    }
-
-    @Override
-    public void setServletContext(ServletContext servletContext) {
-        this.servletContext = servletContext;
     }
 }

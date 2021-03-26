@@ -14,7 +14,7 @@ public class ClassFile extends SimpleJavaFileObject {
     /**
      * 用于保存字节码
      */
-    private ByteArrayOutputStream outputStream;
+    private final ByteArrayOutputStream outputStream;
 
     public ClassFile(String name) {
         super(URI.create(name + Kind.CLASS.extension), Kind.CLASS);
@@ -33,9 +33,9 @@ public class ClassFile extends SimpleJavaFileObject {
      * @see com.sun.tools.javac.main.JavaCompiler#generate(Queue, Queue)
      * @see com.sun.tools.javac.main.JavaCompiler#genCode(com.sun.tools.javac.comp.Env, com.sun.tools.javac.tree.JCTree.JCClassDecl)
      * @see com.sun.tools.javac.jvm.ClassWriter#writeClass(com.sun.tools.javac.code.Symbol.ClassSymbol)
-     * @see JavaFileManager#getJavaFileForOutput(JavaFileManager.Location, String, Kind, FileObject)
-     * @see ClassFileManager#getJavaFileForOutput(JavaFileManager.Location, String, Kind, FileObject)
-     * @see JavaFileObject#openOutputStream()
+     * @see javax.tools.JavaFileManager#getJavaFileForOutput(javax.tools.JavaFileManager.Location, String, Kind, javax.tools.FileObject)
+     * @see ClassFileManager#getJavaFileForOutput(javax.tools.JavaFileManager.Location, String, Kind, javax.tools.FileObject)
+     * @see javax.tools.JavaFileObject#openOutputStream()
      * @see ClassFile#openOutputStream()
      * <p>
      * 跟踪字节码的“翻译”过程。
