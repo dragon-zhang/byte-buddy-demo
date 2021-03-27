@@ -1,9 +1,12 @@
 package org.example;
 
+import org.example.compile.ClassFileManager;
 import org.springframework.beans.factory.BeanNameAware;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+
+import javax.annotation.Resource;
 
 /**
  * @author zhangzicheng
@@ -16,6 +19,9 @@ public class ChangeClassDefine implements BeanNameAware {
      * beanName
      */
     private String name;
+
+    @Resource
+    private ClassFileManager classFileManager;
 
     /**
      * 方法上的描述

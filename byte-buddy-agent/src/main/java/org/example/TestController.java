@@ -17,6 +17,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import javax.annotation.Resource;
 import java.io.File;
+import java.lang.instrument.ClassDefinition;
 import java.lang.instrument.Instrumentation;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
@@ -107,10 +108,12 @@ public class TestController implements BeanNameAware {
         Instrumentation instrumentation = ByteBuddyAgent.install();
         String source = "package org.example;\n" +
                 "\n" +
+                "import org.example.compile.ClassFileManager;\n" +
                 "import org.springframework.beans.factory.BeanNameAware;\n" +
                 "import org.springframework.web.bind.annotation.GetMapping;\n" +
                 "import org.springframework.web.bind.annotation.RequestParam;\n" +
                 "import org.springframework.web.bind.annotation.RestController;\n" +
+                "import javax.annotation.Resource;\n" +
                 "\n" +
                 "/**\n" +
                 " * @author zhangzicheng\n" +
@@ -123,6 +126,9 @@ public class TestController implements BeanNameAware {
                 "     * beanName\n" +
                 "     */\n" +
                 "    private String name;\n" +
+                "\n" +
+                "    @Resource\n" +
+                "    private ClassFileManager classFileManager;" +
                 "\n" +
                 "    /**\n" +
                 "     * 方法上的描述\n" +
@@ -148,9 +154,7 @@ public class TestController implements BeanNameAware {
             System.out.println("编译失败");
             return "failed";
         }
-        instrumentation.addTransformer((loader, className, classBeingRedefined, protectionDomain, classfileBuffer) ->
-                classFileManager.getClassFile(ChangeClassDefine.class.getName()).getBytes(), true);
-        instrumentation.retransformClasses(ChangeClassDefine.class);
+        instrumentation.redefineClasses(new ClassDefinition(ChangeClassDefine.class, classFileManager.getClassFile(ChangeClassDefine.class.getName()).getBytes()));
         return "replaced";
     }
 
